@@ -55,6 +55,14 @@ async function updateFares(){
     let req = await fetch("http://localhost:5000/dashboard/fares");
     let data = await req.json();
 
+    // Clear fares list if there are none
+    if(data.length == 0){
+        for(var div of document.querySelectorAll(".fare")){
+            div.remove()
+        }
+        return;
+    }
+
     for(var fare of data){
         let id = fare.id;
         let element = document.getElementById(`fare-${id}`);
@@ -243,5 +251,5 @@ window.onload = () => {
     }, 1000);
     setInterval(() => {
         updateTeams();
-    }, 100);
+    }, 250);
 }

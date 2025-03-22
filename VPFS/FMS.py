@@ -40,6 +40,10 @@ genCooldown = 0
 def do_generation() -> bool:
     global fares, genCooldown
 
+    # Don't generate fares out of a match
+    if not matchRunning:
+        return False
+
     # Get number of active fares
     count = 0
     for fare in fares:
@@ -62,22 +66,25 @@ def periodic():
     global fares
     while True:
         with mutex:
-            # Update fare statuses
-            for idx, fare in enumerate(fares):
-                fare.periodic(idx, teams)
+            if time.time() > matchEndTime:
+                matchRunning = False
+            if matchRunning:
+                # Update fare statuses
+                for idx, fare in enumerate(fares):
+                    fare.periodic(idx, teams)
 
-            # Generate a new fare if needed
-            if do_generation():
-                fare = generate_fare(fares)
-                if fare is not None:
-                    fares.append(fare)
-                    print("New Fare")
-                else:
-                    print("Failed faregen")
+                # Generate a new fare if needed
+                if do_generation():
+                    fare = generate_fare(fares)
+                    if fare is not None:
+                        fares.append(fare)
+                        print("New Fare")
+                    else:
+                        print("Failed faregen")
         time.sleep(0.02)
 
 def config_match(num: int, duration: int):
-    global matchNum, matchDuration, matchRunning, matchEndTime
+    global matchNum, matchDuration, matchRunning, matchEndTime, fares
     with mutex:
         # Only apply when match is finished
         if matchEndTime < time.time():
@@ -85,11 +92,20 @@ def config_match(num: int, duration: int):
             matchDuration = duration
             matchEndTime = 0
             matchRunning = False
+            fares.clear()
 
 def start_match():
-    global matchEndTime, matchRunning
+    global matchEndTime, matchRunning, fares
     with mutex:
         if not matchRunning:
+            fares.clear()
+            # Seed with a few fares before starting the match
+            for i in range(TARGET_FARES):
+                fare = generate_fare(fares)
+                if fare is not None:
+                    fares.append(fare)
+                    print("Seeded fare")
+
             matchEndTime = time.time() + matchDuration
             matchRunning = True
 
